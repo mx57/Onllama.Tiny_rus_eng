@@ -149,7 +149,7 @@ namespace Onllama.Tiny
             // Перезагружаем список моделей для обновления кнопок и т.д. если там есть локализуемый текст
             ListModels();
             // Обновить списки онлайн моделей
-            PopulateOnlineModelsList(this.selectOnlineModelSource.Text);
+            PopulateOnlineModelsList(this.selectOnlineModelSource.Tag?.ToString() ?? "Ollama", textBoxSearchOnlineModels.Text);
         }
 
         private void Form1_Load(object sender, EventArgs e)
@@ -175,7 +175,7 @@ namespace Onllama.Tiny
 
                 if (string.IsNullOrWhiteSpace(ollamaPath))
                 {
-                    Log(LogLevel.WARN, LocalizationManager.GetTranslation("core_not_installed_log"));
+                    Log(LogLevel.WARN, LocalizationManager.GetTranslation("core_not_installed_log") ?? "Ollama core not found or not in PATH.");
                     Notification.warn(this, LocalizationManager.GetTranslation("core_not_installed"), 
                         LocalizationManager.GetTranslation("please_install"));
                     Process.Start(new ProcessStartInfo($"https://ollama.com/download/windows") { UseShellExecute = true });
@@ -186,7 +186,7 @@ namespace Onllama.Tiny
                 }
                 else if (!PortIsUse(11434))
                 {
-                    Log(LogLevel.INFO, LocalizationManager.GetTranslation("starting_service_log"));
+                    Log(LogLevel.INFO, LocalizationManager.GetTranslation("starting_service_log") ?? "Ollama core not running. Attempting to start service...");
                     AntdUI.Message.info(this, LocalizationManager.GetTranslation("starting_service"));
                     Process.Start(ollamaPath, "serve");
                 }
@@ -258,44 +258,9 @@ namespace Onllama.Tiny
         private System.Windows.Forms.Timer systemMonitorTimer;
         private PerformanceCounter cpuCounter;
         private ComputerInfo computerInfo;
-
-        private void InitializeSystemMonitorTimer()
-        {
-            try
-            {
-                cpuCounter = new PerformanceCounter("Processor", "% Processor Time", "_Total");
-                computerInfo = new ComputerInfo(); // From Microsoft.VisualBasic.Devices
-
-                systemMonitorTimer = new System.Windows.Forms.Timer();
-                systemMonitorTimer.Interval = 2000; // Update every 2 seconds
-                systemMonitorTimer.Tick += SystemMonitorTimer_Tick;
-                systemMonitorTimer.Start();
-                Log(LogLevel.INFO, "System monitor initialized.");
-            }
-            catch (Exception ex)
-            {
-                Log(LogLevel.ERROR, "Failed to initialize system monitor.", ex);
-                if (cpuCounter != null) cpuCounter.Dispose();
-            }
-        }
-
-        private void SystemMonitorTimer_Tick(object sender, EventArgs e)
-        {
-            try
-            {
-                // CPU Usage
-                // This first SystemMonitorTimer_Tick and OnFormClosing are duplicates, will be removed by selecting the second version.
-            }
-            catch (Exception ex)
-            {
-                // Log error but don't stop the timer or crash the app
-                Log(LogLevel.WARN, "Error updating system monitor.", ex);
-            }
-        }
-
-
         private bool systemMonitorInitialized = false;
-        // Keep this version of InitializeSystemMonitorTimer
+
+        // This is the correct version of InitializeSystemMonitorTimer to keep
         private void InitializeSystemMonitorTimer()
         {
             try
@@ -664,8 +629,8 @@ namespace Onllama.Tiny
             pullModelCts = new CancellationTokenSource();
             var token = pullModelCts.Token;
 
-            new Modal.Config(this, LocalizationManager.GetTranslation("confirm_download"), 
-                new[] { new Modal.TextLine(modelToPull, Style.Db.Primary) }, TType.Success)
+            new Modal.Config(this, LocalizationManager.GetTranslation("confirm_download"),
+                new[] { new Modal.TextLine(modelToPull ?? (LocalizationManager.GetTranslation("unknown_model") ?? "Unknown Model"), Style.Db.Primary) }, TType.Success)
             {
                 OkType = TTypeMini.Success,
                 OkText = LocalizationManager.GetTranslation("download"),
@@ -1475,11 +1440,8 @@ public void ListModels()
             }
         }
 
-        protected override void OnFormClosing(FormClosingEventArgs e)
-        {
-            SaveWindowSettings();
-            base.OnFormClosing(e);
-        }
+        // Removed the OnFormClosing from this region as it's a duplicate.
+        // The correct OnFormClosing (handling system monitor disposal and SaveWindowSettings) is in the System Monitor region.
 
         protected override void OnResize(EventArgs e)
         {
